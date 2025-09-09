@@ -1,0 +1,79 @@
+services:
+  # ClickHouse Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: food_clustering_clickhouse
+    environment:
+      CLICKHOUSE_DB: food_clustering
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: unless-stopped
+
+  # MySQL Database (Lab 7's own instance)
+  mysql:
+    image: mysql:8.0
+    container_name: food_clustering_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: food_clustering
+      MYSQL_USER: cluster_user
+      MYSQL_PASSWORD: cluster_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Data Mart Service
+  datamart:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: food_clustering_datamart
+    depends_on:
+      - clickhouse
+      - mysql
+    ports:
+      - "8081:8080"
+    environment:
+      # ClickHouse configuration
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_DATABASE: food_clustering
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      
+      # MySQL configuration
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: food_clustering
+      MYSQL_USER: cluster_user
+      MYSQL_PASSWORD: cluster_password
+      
+      # API configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: ["server"]
+
+volumes:
+  clickhouse_data:
+  mysql_data:
+
+networks:
+  default:
+    name: food_clustering_network
