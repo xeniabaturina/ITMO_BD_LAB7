@@ -6,16 +6,22 @@ import sys
 from tqdm import tqdm
 
 def get_mysql_connection():
-    """Create MySQL connection using the same settings as docker-compose"""
+    """Create MySQL connection"""
+    import os
+    
     config = {
-        'host': 'localhost',
-        'port': 3306,
-        'database': 'food_clustering',
-        'user': 'cluster_user',
-        'password': 'cluster_password',
+        'host': os.getenv('MYSQL_HOST', 'localhost'),
+        'port': int(os.getenv('MYSQL_PORT', '3306')),
+        'database': os.getenv('MYSQL_DATABASE', 'food_clustering'),
+        'user': os.getenv('MYSQL_USER'),
+        'password': os.getenv('MYSQL_PASSWORD'),
         'charset': 'utf8mb4',
         'autocommit': True
     }
+    
+    # Validate required credentials
+    if not config['user'] or not config['password']:
+        raise ValueError("MYSQL_USER and MYSQL_PASSWORD environment variables must be set")
     
     try:
         connection = mysql.connector.connect(**config)
@@ -71,17 +77,10 @@ def load_processed_data(parquet_path, max_records=50000):
         
         if existing_count > 0:
             print(f"Database already contains {existing_count} records")
-            response = input("Do you want to clear existing data and reload? (y/n): ")
-            if response.lower() == 'y':
-                print("Clearing existing data...")
-                cursor.execute("DELETE FROM processed_food_data")
-                connection.commit()
-                print("Existing data cleared")
-            else:
-                print("Keeping existing data")
-                cursor.close()
-                connection.close()
-                return True
+            print("Clearing existing data for fresh load...")
+            cursor.execute("DELETE FROM processed_food_data")
+            connection.commit()
+            print("Existing data cleared")
         
         # Prepare data for insertion
         df_clean = df.copy()
@@ -168,9 +167,8 @@ def main():
     print("=" * 80)
     print("ITMO Big Data Lab 7: Data Loader")
     print("=" * 80)
-    
-    # Path to processed data from Lab 5/6
-    data_path = "/Users/xeniabaturina/ITMO/Sem2/BD/data/processed_food_data.parquet"
+
+    data_path = "/data/processed_food_data.parquet"
     
     if len(sys.argv) > 1:
         data_path = sys.argv[1]

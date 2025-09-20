@@ -11,13 +11,16 @@ logger = logging.getLogger(__name__)
 class DataMartClient:
     """Client for interacting with the ClickHouse Data Mart API"""
     
-    def __init__(self, base_url: str = "http://localhost:8081"):
+    def __init__(self, base_url: str = None):
         """
         Initialize the DataMart client
         
         Args:
             base_url: Base URL of the DataMart API server
         """
+        import os
+        if base_url is None:
+            base_url = os.getenv('DATAMART_BASE_URL', 'http://localhost:8081')
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
         self.session.headers.update({

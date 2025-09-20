@@ -59,10 +59,6 @@ object Config {
   private val config = ConfigFactory.load()
   
   def load(): DataMartConfig = {
-    // Debug: print environment variables
-    println(s"DEBUG: CLICKHOUSE_HOST = ${sys.env.get("CLICKHOUSE_HOST")}")
-    println(s"DEBUG: MYSQL_HOST = ${sys.env.get("MYSQL_HOST")}")
-    
     val datamartConfig = config.getConfig("datamart")
     
     val clickhouseConfig = datamartConfig.getConfig("clickhouse")
@@ -71,22 +67,11 @@ object Config {
     val processingConfig = datamartConfig.getConfig("processing")
     val loggingConfig = datamartConfig.getConfig("logging")
     
-    // Debug: print what config values are being loaded
-    val clickhouseHost = clickhouseConfig.getString("host")
-    val mysqlHost = mysqlConfig.getString("host")
-    println(s"DEBUG: Loaded ClickHouse host: $clickhouseHost")
-    println(s"DEBUG: Loaded MySQL host: $mysqlHost")
-    
-    val clickhousePort = clickhouseConfig.getInt("port")
-    val clickhouseDatabase = clickhouseConfig.getString("database")
-    val clickhouseJdbcUrl = s"jdbc:clickhouse://$clickhouseHost:$clickhousePort/$clickhouseDatabase"
-    println(s"DEBUG: ClickHouse JDBC URL: $clickhouseJdbcUrl")
-    
     DataMartConfig(
       clickhouse = ClickHouseConfig(
-        host = clickhouseHost,
-        port = clickhousePort,
-        database = clickhouseDatabase,
+        host = clickhouseConfig.getString("host"),
+        port = clickhouseConfig.getInt("port"),
+        database = clickhouseConfig.getString("database"),
         user = clickhouseConfig.getString("user"),
         password = clickhouseConfig.getString("password"),
         maxConnections = clickhouseConfig.getInt("max_connections"),
@@ -94,7 +79,7 @@ object Config {
         socketTimeout = clickhouseConfig.getInt("socket_timeout")
       ),
       mysql = MySQLConfig(
-        host = mysqlHost,
+        host = mysqlConfig.getString("host"),
         port = mysqlConfig.getInt("port"),
         database = mysqlConfig.getString("database"),
         user = mysqlConfig.getString("user"),
